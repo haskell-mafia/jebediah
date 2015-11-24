@@ -8,7 +8,7 @@ Cloudwatch logs cat tool.
 
 Usage:
 ```
-jepediah LOG_GROUP INSTANCE_ID
+jepediah LOG_GROUP LOG_STREAM [-f,--follow]
 ```
 
 Additional options, `-f,--follow` will cause the connection to poll and ascertain if new entries have been entered, and cat those to stdout, `tail -f` could then be useful also.
