@@ -1,3 +1,13 @@
-This is a project template for a cli application in Haskell.
+```
+  “I wish someone would cut his ugly old head off!”
+  ―Jimbo
+```
 
-Once you have cloned this project you need to do a global search for "PROJECT", "Project" or "project" and replace it with your application name.
+Cloudwatch logs cat tool.
+
+Usage:
+```
+jepediah LOG_GROUP INSTANCE_ID
+```
+
+Additional options, `-f,--follow` will cause the connection to poll and ascertain if new entries have been entered, and cat those to stdout, `tail -f` could then be useful also.
