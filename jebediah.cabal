@@ -66,10 +66,12 @@ executable jebediah
                     , ambiata-x-optparse
                     , ambiata-mismi-core
                     , ambiata-mismi-cloudwatch-logs
+                    , attoparsec
                     , conduit
                     , optparse-applicative
                     , lens
                     , text
+                    , time
                     , transformers
 
 

@@ -15,13 +15,16 @@ import           System.Exit
 import           X.Options.Applicative
 import           X.Control.Monad.Trans.Either.Exit
 
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-
 import           Jebediah.Control
+
+import qualified Data.Attoparsec.Text as A
 
 import           Data.Conduit
 import qualified Data.Conduit.List as DC
+import qualified Data.Time as DT
+
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 
 import           Mismi
 import           Mismi.CloudwatchLogs.Amazonka
@@ -54,7 +57,8 @@ commandP' = subparser $
               (ListStreams <$> groupName')
   <> command' "cat-stream"
               "Cat a stream"
-              (Cat <$> groupName' <*> streamName')
+              (Cat <$> groupName' <*> streamName' <*> fromTime')
+
 run :: Command -> IO ()
 run c = do
   e <- orDie renderRegionError discoverAWSEnv
@@ -63,13 +67,15 @@ run c = do
        listLogGroups' Nothing $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. lgLogGroupName))
     ListStreams g ->
        listLogStreams' g Nothing $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. lsLogStreamName))
-    Cat g s ->
-       retrieveLogStream' g s Nothing Nothing Nothing $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. oleMessage))
+    Cat g s tt -> do
+       tz <- liftIO DT.getCurrentTimeZone
+       let tt' = (DT.localTimeToUTC tz) <$> tt 
+       retrieveLogStream' g s tt' Nothing Nothing $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. oleMessage))
 
 data Command =
   ListGroups
   | ListStreams T.Text
-  | Cat T.Text T.Text
+  | Cat T.Text T.Text (Maybe DT.LocalTime)
   deriving (Eq, Show)
 
 
@@ -78,3 +84,11 @@ groupName' = argument textRead (metavar "GROUP-NAME")
 
 streamName' :: Parser T.Text
 streamName' = argument textRead (metavar "STREAM-NAME")
+
+fromTime' :: Parser (Maybe DT.LocalTime)
+fromTime' = optional $ option (pOption p) (short 'f' <> long "from-time" <> help "Local time floor for query from")
+  where
+    p = DT.LocalTime
+     <$> (DT.fromGregorian <$> A.decimal <* A.char '-' <*> A.decimal <* A.char '-' <*> A.decimal)
+     <* A.char 'T'
+     <*> (DT.TimeOfDay <$> A.decimal <* A.char ':' <*> A.decimal <* A.char ':' <*> (fromRational <$> A.rational))
