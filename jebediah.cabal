@@ -50,6 +50,7 @@ library
                     BuildInfo_jebediah
                     Jebediah
                     Jebediah.Control
+                    Jebediah.Data
 
 executable jebediah
   ghc-options:

@@ -5,12 +5,13 @@ module Jebediah.Control (
   , listLogGroups'
   , listLogStreams
   , listLogStreams'
-  , retrieveLogStream
   , retrieveLogStream'
   ) where
 
 import           P
+import           Control.Concurrent (threadDelay)
 import           Control.Lens
+import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 
 import           Mismi
@@ -19,10 +20,13 @@ import           Mismi.CloudwatchLogs.Amazonka
 import           Data.Conduit
 import qualified Data.Conduit.List as DC
 import           Data.Text (Text)
+--import           Data.Text.IO (putStrLn)
 import           Data.Time.Clock.POSIX
 
 import           Network.AWS hiding (runAWS)
 import           Network.AWS.Data.Time
+
+import           Jebediah.Data
 
 listLogGroups :: MonadAWS m
               => Maybe Text
@@ -58,32 +62,30 @@ listLogStreams' groupName prefixName
   $ describeLogStreams groupName
   & dlssLogStreamNamePrefix .~ prefixName
 
--- Probably don't use this one, it's not lazy and will download the world.
-retrieveLogStream :: MonadAWS m
-                  => Text
-                  -> Text
-                  -> Maybe UTCTime
-                  -> Maybe UTCTime
-                  -> m [OutputLogEvent]
-retrieveLogStream groupName streamName start end
-  = liftAWS
-  $ flip ($$) DC.consume
-  $ retrieveLogStream' groupName streamName start end Nothing
-
 -- getLogEvents does *not* implement pagination, so I'm doing it myself here.
 retrieveLogStream' :: Text
                    -> Text
                    -> Maybe UTCTime
                    -> Maybe UTCTime
                    -> Maybe Text
+                   -> Following
                    -> Source AWS OutputLogEvent
-retrieveLogStream' groupName streamName start end nxt
+retrieveLogStream' groupName streamName start end nxt following
  = do
   y <- lift $ retrieveLogStream'' groupName streamName start end nxt
   traverse_ yield (y ^. glersEvents)
   case (y ^. glersNextForwardToken) of
     Nothing     -> pure ()
-    Just (nxt') -> retrieveLogStream' groupName streamName start end (Just nxt')
+    Just (nxt') -> do
+      case (y ^. glersEvents, following) of
+        ([], NoFollow) -> pure ()
+        ([], Follow)   -> do
+          -- Pause for 10 seconds before making the next request.
+          liftIO (threadDelay 10000000)
+          retrieveLogStream' groupName streamName start end (Just nxt') following
+        (_, _)   -> do
+          retrieveLogStream' groupName streamName start end (Just nxt') following
+
 
 retrieveLogStream'' :: Text
                     -> Text
@@ -91,13 +93,18 @@ retrieveLogStream'' :: Text
                     -> Maybe UTCTime
                     -> Maybe Text
                     -> AWS GetLogEventsResponse
-retrieveLogStream'' groupName streamName start end nxt
+retrieveLogStream'' groupName streamName start end Nothing
  = send
  $ getLogEvents groupName streamName
- & gleStartTime .~ start'
- & gleEndTime   .~ end'
- & gleNextToken .~ nxt
+ & gleStartTime     .~ start'
+ & gleEndTime       .~ end'
+ & gleStartFromHead .~ (Just True)
   where
     --  A point in time expressed as the number of milliseconds since Jan 1, 1970 00:00:00 UTC.
     start' = (*1000) . round . utcTimeToPOSIXSeconds <$> start
     end'   = (*1000) . round . utcTimeToPOSIXSeconds <$> end
+
+retrieveLogStream'' groupName streamName _ _ x@(Just _)
+ = send
+ $ getLogEvents groupName streamName
+ & gleNextToken .~ x

@@ -15,6 +15,7 @@ import           System.Exit
 import           X.Options.Applicative
 import           X.Control.Monad.Trans.Either.Exit
 
+import           Jebediah.Data
 import           Jebediah.Control
 
 import qualified Data.Attoparsec.Text as A
@@ -57,7 +58,7 @@ commandP' = subparser $
               (ListStreams <$> groupName')
   <> command' "cat-stream"
               "Cat a stream"
-              (Cat <$> groupName' <*> streamName' <*> fromTime')
+              (Cat <$> groupName' <*> streamName' <*> fromTime' <*> follow')
 
 run :: Command -> IO ()
 run c = do
@@ -67,15 +68,15 @@ run c = do
        listLogGroups' Nothing $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. lgLogGroupName))
     ListStreams g ->
        listLogStreams' g Nothing $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. lsLogStreamName))
-    Cat g s tt -> do
+    Cat g s tt f -> do
        tz <- liftIO DT.getCurrentTimeZone
-       let tt' = (DT.localTimeToUTC tz) <$> tt 
-       retrieveLogStream' g s tt' Nothing Nothing $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. oleMessage))
+       let tt' = (DT.localTimeToUTC tz) <$> tt
+       retrieveLogStream' g s tt' Nothing Nothing f $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. oleMessage))
 
 data Command =
   ListGroups
   | ListStreams T.Text
-  | Cat T.Text T.Text (Maybe DT.LocalTime)
+  | Cat T.Text T.Text (Maybe DT.LocalTime) Following
   deriving (Eq, Show)
 
 
@@ -86,9 +87,12 @@ streamName' :: Parser T.Text
 streamName' = argument textRead (metavar "STREAM-NAME")
 
 fromTime' :: Parser (Maybe DT.LocalTime)
-fromTime' = optional $ option (pOption p) (short 'f' <> long "from-time" <> help "Local time floor for query from")
+fromTime' = optional $ option (pOption p) (short 't' <> long "time" <> help "Local time floor for query from")
   where
     p = DT.LocalTime
      <$> (DT.fromGregorian <$> A.decimal <* A.char '-' <*> A.decimal <* A.char '-' <*> A.decimal)
      <* A.char 'T'
      <*> (DT.TimeOfDay <$> A.decimal <* A.char ':' <*> A.decimal <* A.char ':' <*> (fromRational <$> A.rational))
+
+follow' :: Parser Following
+follow' = flag NoFollow Follow (short 'f' <> long "follow" <> help "Whether to follow the stream (wait time 10)")
