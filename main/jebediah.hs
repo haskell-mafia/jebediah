@@ -11,6 +11,7 @@ import           Control.Lens hiding (argument)
 import           Control.Monad.IO.Class
 
 import           System.IO
+import           System.IO.Error
 import           System.Exit
 import           X.Options.Applicative
 import           X.Control.Monad.Trans.Either.Exit
@@ -28,7 +29,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 import           Mismi
-import           Mismi.CloudwatchLogs.Amazonka
+import           Mismi.CloudwatchLogs.Amazonka hiding (createLogGroup, createLogStream)
 
 
 main :: IO ()
@@ -59,6 +60,15 @@ commandP' = subparser $
   <> command' "cat-stream"
               "Cat a stream"
               (Cat <$> groupName' <*> streamName' <*> fromTime' <*> follow')
+  <> command' "create-group"
+              "Create a log group"
+              (CreateGroup <$> groupName')
+  <> command' "create-stream"
+              "Create a Log stream in a group"
+              (CreateStream <$> groupName' <*> streamName')
+  <> command' "upload-file"
+              "Upload a file handle"
+              (UploadFile <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH") <*> sequenceNumber')
 
 run :: Command -> IO ()
 run c = do
@@ -72,19 +82,30 @@ run c = do
        tz <- liftIO DT.getCurrentTimeZone
        let tt' = (DT.localTimeToUTC tz) <$> tt
        retrieveLogStream' g s tt' Nothing Nothing f $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. oleMessage))
+    CreateGroup g ->
+      createLogGroup g
+    CreateStream g s ->
+      createLogStream g s
+    UploadFile g s fp sn ->
+      getFileConduit fp $$ logSink 100 g s sn
 
 data Command =
   ListGroups
   | ListStreams T.Text
   | Cat T.Text T.Text (Maybe DT.LocalTime) Following
+  | CreateGroup T.Text
+  | CreateStream T.Text T.Text
+  | UploadFile T.Text T.Text FilePath (Maybe T.Text)
   deriving (Eq, Show)
-
 
 groupName' :: Parser T.Text
 groupName' = argument textRead (metavar "GROUP-NAME")
 
 streamName' :: Parser T.Text
 streamName' = argument textRead (metavar "STREAM-NAME")
+
+sequenceNumber' :: Parser (Maybe T.Text)
+sequenceNumber' = optional $ option textRead (long "sequence-number")
 
 fromTime' :: Parser (Maybe DT.LocalTime)
 fromTime' = optional $ option (pOption p) (short 't' <> long "time" <> help "Local time floor for query from")
@@ -96,3 +117,15 @@ fromTime' = optional $ option (pOption p) (short 't' <> long "time" <> help "Loc
 
 follow' :: Parser Following
 follow' = flag NoFollow Follow (short 'f' <> long "follow" <> help "Whether to follow the stream (wait time 10)")
+
+getFileConduit :: MonadIO m => FilePath -> Source m (DT.UTCTime, T.Text)
+getFileConduit path = do
+  h <- liftIO (openFile path ReadMode)
+  getFileLines' h
+    where
+      getFileLines' h = do
+        a <- liftIO $ tryIOError (T.hGetLine h)
+        t <- liftIO DT.getCurrentTime
+        case a of
+          Right x -> yield (t,x) >> getFileLines' h
+          Left _  -> return ()
