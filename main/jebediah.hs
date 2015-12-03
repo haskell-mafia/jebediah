@@ -1,5 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase        #-}
 
 import           BuildInfo_jebediah
 
@@ -12,6 +13,7 @@ import           Control.Monad.IO.Class
 
 import           System.IO
 import           System.IO.Error
+import           System.Directory
 import           System.Exit
 import           X.Options.Applicative
 import           X.Control.Monad.Trans.Either.Exit
@@ -55,7 +57,7 @@ commandP' = subparser $
               "List all log groups"
               (pure ListGroups)
   <> command' "list-streams"
-              "List log streams in a group"
+              "List log streams in a log group"
               (ListStreams <$> groupName')
   <> command' "cat-stream"
               "Cat a stream"
@@ -64,10 +66,13 @@ commandP' = subparser $
               "Create a log group"
               (CreateGroup <$> groupName')
   <> command' "create-stream"
-              "Create a Log stream in a group"
+              "Create a log stream in a group"
               (CreateStream <$> groupName' <*> streamName')
   <> command' "upload-file"
-              "Upload a file handle"
+              "Upload a file to a new fresh stream"
+              (CreateStreamAndUpload <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH"))
+  <> command' "upload-file-to-exising"
+              "Upload a file to an exiting stream"
               (UploadFile <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH") <*> sequenceNumber')
 
 run :: Command -> IO ()
@@ -86,6 +91,14 @@ run c = do
       createLogGroup g
     CreateStream g s ->
       createLogStream g s
+    CreateStreamAndUpload g s fp ->
+      liftIO (doesFileExist fp) >>= \case
+        True -> do
+          createLogStream g s
+          getFileConduit fp $$ logSink 100 g s Nothing
+        False -> liftIO $ do
+          putStrLn "File does not exist"
+          exitWith (ExitFailure 1)
     UploadFile g s fp sn ->
       getFileConduit fp $$ logSink 100 g s sn
 
@@ -95,6 +108,7 @@ data Command =
   | Cat T.Text T.Text (Maybe DT.LocalTime) Following
   | CreateGroup T.Text
   | CreateStream T.Text T.Text
+  | CreateStreamAndUpload T.Text T.Text FilePath
   | UploadFile T.Text T.Text FilePath (Maybe T.Text)
   deriving (Eq, Show)
 

@@ -131,6 +131,8 @@ retrieveLogStream'' groupName streamName _ _ x@(Just _)
  & gleNextToken .~ x
 
 -- Conduit sink which takes lines pairs, batches them into sizes of n, and sends them up.
+-- Takes care to ensure sequence tokens are used for separate jobs, but will generally be
+-- called initially with Nothing for the token parameter.
 logSink :: Int
         -> Text
         -> Text
@@ -148,6 +150,8 @@ logSink n groupName streamName initialSequenceNumber = buffer =$ logSinkNel grou
           buffer
 
 -- Conduit sink which takes in a single NEL and pushes it up.
+-- This function takes care to use the next sequence token each
+-- time it is run.
 logSinkNel :: Text
            -> Text
            -> Maybe Text
@@ -162,6 +166,7 @@ logSinkNel groupName streamName sequenceToken
       logSinkNel groupName streamName (res ^. plersNextSequenceToken)
 
 -- Write a batch to a log stream without any checking of invariants.
+-- Sequence tokens, the size of the log sections, it's all up for grabs.
 writeLogNel :: MonadAWS m
             => Text                     -- Log group
             -> Text                     -- Log stream
