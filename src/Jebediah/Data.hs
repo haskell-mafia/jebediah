@@ -7,6 +7,6 @@ module Jebediah.Data (
 import           P
 
 data Following =
-  Follow
+  Follow Int
   | NoFollow
   deriving (Eq, Show)

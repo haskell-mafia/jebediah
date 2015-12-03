@@ -1,6 +1,6 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE LambdaCase        #-}
 
 import           BuildInfo_jebediah
 
@@ -72,7 +72,7 @@ commandP' = subparser $
               "Upload a file to a new fresh stream"
               (CreateStreamAndUpload <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH"))
   <> command' "upload-file-to-exising"
-              "Upload a file to an exiting stream"
+              "Upload a file to an existing stream"
               (UploadFile <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH") <*> sequenceNumber')
 
 run :: Command -> IO ()
@@ -130,7 +130,7 @@ fromTime' = optional $ option (pOption p) (short 't' <> long "time" <> help "Loc
      <*> (DT.TimeOfDay <$> A.decimal <* A.char ':' <*> A.decimal <* A.char ':' <*> (fromRational <$> A.rational))
 
 follow' :: Parser Following
-follow' = flag NoFollow Follow (short 'f' <> long "follow" <> help "Whether to follow the stream (wait time 10)")
+follow' = Follow <$> option auto (short 'f' <> long "follow" <> help "Follow the stream with checks every 'X' seconds" <> metavar "X") <|> pure NoFollow
 
 getFileConduit :: MonadIO m => FilePath -> Source m (DT.UTCTime, T.Text)
 getFileConduit path = do

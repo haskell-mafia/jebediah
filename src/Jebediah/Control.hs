@@ -18,18 +18,13 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 
 import           Mismi
+import           Mismi.Amazonka hiding (await)
 import           Mismi.CloudwatchLogs.Amazonka hiding (createLogGroup, createLogStream)
 import qualified Mismi.CloudwatchLogs.Amazonka as MA
 
 import           Data.Conduit
 import qualified Data.Conduit.List as DC
-import           Data.Text (Text)
-import           Data.List.NonEmpty
---import           Data.Text.IO (putStrLn)
-import           Data.Time.Clock
 import           Data.Time.Clock.POSIX
-
-import           Network.AWS hiding (runAWS, await)
 
 import           Jebediah.Data
 
@@ -101,9 +96,9 @@ retrieveLogStream' groupName streamName start end nxt following
     Just (nxt') -> do
       case (y ^. glersEvents, following) of
         ([], NoFollow) -> pure ()
-        ([], Follow)   -> do
+        ([], Follow waitTime)   -> do
           -- Pause for 10 seconds before making the next request.
-          liftIO (threadDelay 10000000)
+          liftIO (threadDelay (1000000 * waitTime))
           retrieveLogStream' groupName streamName start end (Just nxt') following
         (_, _)   -> do
           retrieveLogStream' groupName streamName start end (Just nxt') following
