@@ -104,19 +104,19 @@ run c = do
 
 data Command =
   ListGroups
-  | ListStreams T.Text
-  | Cat T.Text T.Text (Maybe DT.LocalTime) Following
-  | CreateGroup T.Text
-  | CreateStream T.Text T.Text
-  | CreateStreamAndUpload T.Text T.Text FilePath
-  | UploadFile T.Text T.Text FilePath (Maybe T.Text)
+  | ListStreams GroupName
+  | Cat GroupName StreamName (Maybe DT.LocalTime) Following
+  | CreateGroup GroupName
+  | CreateStream GroupName StreamName
+  | CreateStreamAndUpload GroupName StreamName FilePath
+  | UploadFile GroupName StreamName FilePath (Maybe T.Text)
   deriving (Eq, Show)
 
-groupName' :: Parser T.Text
-groupName' = argument textRead (metavar "GROUP-NAME")
+groupName' :: Parser GroupName
+groupName' = GroupName <$> argument textRead (metavar "GROUP-NAME")
 
-streamName' :: Parser T.Text
-streamName' = argument textRead (metavar "STREAM-NAME")
+streamName' :: Parser StreamName
+streamName' = StreamName <$> argument textRead (metavar "STREAM-NAME")
 
 sequenceNumber' :: Parser (Maybe T.Text)
 sequenceNumber' = optional $ option textRead (long "sequence-number")

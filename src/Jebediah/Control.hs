@@ -29,59 +29,61 @@ import           Data.Time.Clock.POSIX
 import           Jebediah.Data
 
 listLogGroups :: MonadAWS m
-              => Maybe Text
+              => Maybe GroupName
               -> m [LogGroup]
 listLogGroups prefixName
   = liftAWS
   $ flip ($$) DC.consume
   $ listLogGroups' prefixName
 
-listLogGroups' :: Maybe Text
+listLogGroups' :: Maybe GroupName
                -> Source AWS LogGroup
 listLogGroups' prefixName
   = flip (=$=) (DC.concatMap (^. dlgrsLogGroups))
   $ paginate
   $ describeLogGroups
-  & dlgLogGroupNamePrefix  .~ prefixName
+  & dlgLogGroupNamePrefix .~ fmap unGroupName prefixName
 
 createLogGroup :: MonadAWS m
-               => Text
+               => GroupName
                -> m ()
 createLogGroup
   = liftAWS
   . fmap (const ()) . send
   . MA.createLogGroup
+  . unGroupName
 
 listLogStreams :: MonadAWS m
-               => Text
-               -> Maybe Text
+               => GroupName
+               -> Maybe StreamName
                -> m [LogStream]
-listLogStreams groupName prefixName
+listLogStreams groupName' prefixName
   = liftAWS
   $ flip ($$) DC.consume
-  $ listLogStreams' groupName prefixName
+  $ listLogStreams' groupName' prefixName
 
-listLogStreams' :: Text
-                -> Maybe Text
+listLogStreams' :: GroupName
+                -> Maybe StreamName
                 -> Source AWS LogStream
-listLogStreams' groupName prefixName
+listLogStreams' (GroupName groupName) prefixName
   = flip (=$=) (DC.concatMap (^. dlsrsLogStreams))
   $ paginate
   $ describeLogStreams groupName
-  & dlssLogStreamNamePrefix .~ prefixName
+  & dlssLogStreamNamePrefix .~ fmap unStreamName prefixName
 
 createLogStream :: MonadAWS m
-                => Text
-                -> Text
+                => GroupName
+                -> StreamName
                 -> m ()
-createLogStream g
+createLogStream (GroupName groupName) (StreamName streamName)
   = liftAWS
   . fmap (const ()) . send
-  . MA.createLogStream g
+  . MA.createLogStream groupName
+  $ streamName
 
 -- getLogEvents does *not* implement pagination, so I'm doing it myself here.
-retrieveLogStream' :: Text
-                   -> Text
+retrieveLogStream' :: GroupName
+                   -> StreamName
                    -> Maybe UTCTime
                    -> Maybe UTCTime
                    -> Maybe Text
@@ -103,13 +105,13 @@ retrieveLogStream' groupName streamName start end nxt following
         (_, _)   -> do
           retrieveLogStream' groupName streamName start end (Just nxt') following
 
-retrieveLogStream'' :: Text
-                    -> Text
+retrieveLogStream'' :: GroupName
+                    -> StreamName
                     -> Maybe UTCTime
                     -> Maybe UTCTime
                     -> Maybe Text
                     -> AWS GetLogEventsResponse
-retrieveLogStream'' groupName streamName start end Nothing
+retrieveLogStream'' (GroupName groupName) (StreamName streamName) start end Nothing
  = send
  $ getLogEvents groupName streamName
  & gleStartTime     .~ start'
@@ -120,7 +122,7 @@ retrieveLogStream'' groupName streamName start end Nothing
     start' = round . (*1000) . utcTimeToPOSIXSeconds <$> start
     end'   = round . (*1000) . utcTimeToPOSIXSeconds <$> end
 
-retrieveLogStream'' groupName streamName _ _ x@(Just _)
+retrieveLogStream'' (GroupName groupName) (StreamName streamName) _ _ x@(Just _)
  = send
  $ getLogEvents groupName streamName
  & gleNextToken .~ x
@@ -129,8 +131,8 @@ retrieveLogStream'' groupName streamName _ _ x@(Just _)
 -- Takes care to ensure sequence tokens are used for separate jobs, but will generally be
 -- called initially with Nothing for the token parameter.
 logSink :: Int
-        -> Text
-        -> Text
+        -> GroupName
+        -> StreamName
         -> Maybe Text
         -> Sink (UTCTime, Text) AWS ()
 logSink n groupName streamName initialSequenceNumber = buffer =$ logSinkNel groupName streamName initialSequenceNumber
@@ -147,8 +149,8 @@ logSink n groupName streamName initialSequenceNumber = buffer =$ logSinkNel grou
 -- Conduit sink which takes in a single NEL and pushes it up.
 -- This function takes care to use the next sequence token each
 -- time it is run.
-logSinkNel :: Text
-           -> Text
+logSinkNel :: GroupName
+           -> StreamName
            -> Maybe Text
            -> Sink (NonEmpty (UTCTime, Text)) AWS ()
 logSinkNel groupName streamName sequenceToken
@@ -163,12 +165,12 @@ logSinkNel groupName streamName sequenceToken
 -- Write a batch to a log stream without any checking of invariants.
 -- Sequence tokens, the size of the log sections, it's all up for grabs.
 writeLogNel :: MonadAWS m
-            => Text                     -- Log group
-            -> Text                     -- Log stream
+            => GroupName                -- Log group
+            -> StreamName               -- Log stream
             -> Maybe Text               -- Sequence number
             -> NonEmpty (UTCTime, Text) -- Log Texts (must be chronolgically ordered)
             -> m PutLogEventsResponse
-writeLogNel groupName streamName sequenceToken logs
+writeLogNel (GroupName groupName) (StreamName streamName) sequenceToken logs
  = liftAWS
  $ send
  $ putLogEvents groupName streamName (mkLog <$> logs)
