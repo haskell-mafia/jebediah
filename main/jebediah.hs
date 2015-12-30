@@ -2,7 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-import           BuildInfo_jebediah
+import           BuildInfo_ambiata_jebediah
 
 import           Options.Applicative
 

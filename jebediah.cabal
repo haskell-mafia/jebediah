@@ -1,4 +1,4 @@
-name:                  jebediah
+name:                  ambiata-jebediah
 version:               0.0.1
 license:               AllRightsReserved
 author:                Ambiata <info@ambiata.com>
@@ -47,8 +47,8 @@ library
                     src gen
 
   exposed-modules:
-                    Paths_jebediah
-                    BuildInfo_jebediah
+                    Paths_ambiata_jebediah
+                    BuildInfo_ambiata_jebediah
                     Jebediah
                     Jebediah.Control
                     Jebediah.Data
@@ -62,7 +62,7 @@ executable jebediah
 
   build-depends:
                       base
-                    , jebediah
+                    , ambiata-jebediah
                     , ambiata-p
                     , ambiata-x-eithert
                     , ambiata-x-optparse
@@ -93,7 +93,7 @@ test-suite test
 
   build-depends:
                       base                            >= 3          && < 5
-                    , jebediah
+                    , ambiata-jebediah
                     , ambiata-disorder-core
                     , ambiata-disorder-corpus
                     , ambiata-p
@@ -115,7 +115,7 @@ test-suite test-io
 
   build-depends:
                       base                            >= 3          && < 5
-                    , jebediah
+                    , ambiata-jebediah
                     , ambiata-disorder-core
                     , ambiata-disorder-corpus
                     , ambiata-p
@@ -138,5 +138,5 @@ test-suite test-cli
 
   build-depends:
                       base                            >= 3          && < 5
-                    , jebediah
+                    , ambiata-jebediah
                     , ambiata-disorder-core
