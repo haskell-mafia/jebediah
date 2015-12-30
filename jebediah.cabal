@@ -54,7 +54,7 @@ executable jebediah
                     , ambiata-mismi-cloudwatch-logs
                     , attoparsec
                     , conduit
-                    , directory
+                    , directory                       == 1.2.*
                     , optparse-applicative
                     , lens
                     , text
