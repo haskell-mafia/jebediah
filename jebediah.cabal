@@ -28,11 +28,9 @@ library
                     -Wall
 
   hs-source-dirs:
-                    src gen
+                    src
 
   exposed-modules:
-                    Paths_ambiata_jebediah
-                    BuildInfo_ambiata_jebediah
                     Jebediah
                     Jebediah.Control
                     Jebediah.Data
@@ -41,8 +39,11 @@ executable jebediah
   ghc-options:
                     -Wall -threaded -O2
 
+  hs-source-dirs:
+                    gen
+
   main-is:
-                    main/jebediah.hs
+                    ../main/jebediah.hs
 
   build-depends:
                       base

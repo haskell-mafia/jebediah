@@ -13,7 +13,7 @@ module Jebediah.Control (
 
 import           P hiding (reverse)
 import           Control.Concurrent (threadDelay)
-import           Control.Lens
+import           Control.Lens hiding ((&))
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 
