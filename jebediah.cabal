@@ -18,6 +18,7 @@ library
                      , ambiata-mismi-cloudwatch-logs
                      , ambiata-x-exception
                      , ambiata-x-eithert
+                     , bytestring                      == 0.10.*
                      , conduit
                      , lens                            >= 4.8        && < 4.10
                      , text                            == 1.2.*

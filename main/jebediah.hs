@@ -95,12 +95,12 @@ run c = do
       liftIO (doesFileExist fp) >>= \case
         True -> do
           createLogStream g s
-          getFileConduit fp $$ logSink 100 g s Nothing
+          getFileConduit fp $$ logSink (BatchSize 10000 1048576 60) g s Nothing
         False -> liftIO $ do
           putStrLn "File does not exist"
           exitWith (ExitFailure 1)
     UploadFile g s fp sn ->
-      getFileConduit fp $$ logSink 100 g s sn
+      getFileConduit fp $$ logSink (BatchSize 10000 1048576 60) g s sn
 
 data Command =
   ListGroups
