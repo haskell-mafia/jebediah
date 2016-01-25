@@ -13,6 +13,8 @@ module Jebediah.Data (
 import           P
 
 import           Data.Text
+import           Delorean.Duration
+import           Units
 
 data Following =
   Follow !Int
@@ -20,7 +22,7 @@ data Following =
   deriving (Eq, Show)
 
 data BatchSize =
-  BatchSize !Int !Int !Rational -- Number, Size, TimeDiff (seconds)
+  BatchSize !Int !BytesQuantity !Duration -- Number, Size, TimeDiff (seconds)
   deriving (Eq, Show)
 
 -- A CPS list concatenation

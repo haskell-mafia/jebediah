@@ -8,8 +8,11 @@
 	path = lib/x
 	url = git@github.com:ambiata/x
 [submodule "lib/mismi"]
-        path = lib/mismi
-        url = git@github.com:ambiata/mismi
+	path = lib/mismi
+	url = git@github.com:ambiata/mismi
+[submodule "lib/delorean"]
+	path = lib/delorean
+	url = git@github.com:ambiata/delorean.git
 [submodule "lib/units"]
 	path = lib/units
 	url = git@github.com:ambiata/units.git

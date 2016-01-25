@@ -30,9 +30,12 @@ import qualified Data.Time as DT
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
+import           Delorean.Duration
+
 import           Mismi
 import           Mismi.CloudwatchLogs.Amazonka hiding (createLogGroup, createLogStream)
 
+import           Units
 
 main :: IO ()
 main = do
@@ -95,12 +98,12 @@ run c = do
       liftIO (doesFileExist fp) >>= \case
         True -> do
           createLogStream g s
-          getFileConduit fp $$ logSink (BatchSize 10000 1048576 60) g s Nothing
+          getFileConduit fp $$ logSink (BatchSize 10000 (BytesQuantity 1048576) (Seconds 60)) g s Nothing
         False -> liftIO $ do
           putStrLn "File does not exist"
           exitWith (ExitFailure 1)
     UploadFile g s fp sn ->
-      getFileConduit fp $$ logSink (BatchSize 10000 1048576 60) g s sn
+      getFileConduit fp $$ logSink (BatchSize 10000 (BytesQuantity 1048576) (Seconds 60)) g s sn
 
 data Command =
   ListGroups

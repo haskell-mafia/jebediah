@@ -30,7 +30,11 @@ import           Data.Time.Clock.POSIX
 import qualified Data.Text as T
 import           Data.Text.Encoding (encodeUtf8)
 
+import           Delorean.Duration
+
 import           Jebediah.Data
+
+import           Units
 
 listLogGroups :: MonadAWS m
               => Maybe GroupName
@@ -155,15 +159,13 @@ logSink :: BatchSize
         -> Sink (UTCTime, Text) AWS ()
 logSink batchSize groupName streamName initialSequenceNumber = buffer =$ logSinkNel groupName streamName initialSequenceNumber
   where
-    buffer :: ConduitM (UTCTime, Text) (NonEmpty (UTCTime, Text)) AWS ()
     buffer = do
       a <- await
       case a of
         Nothing -> return ()
         Just a'@(ts,message) ->
-          bufferNel (1 :: Int) (getSize message) ts a' (toDiff [])
+          bufferNel 1 (getSize message) ts a' (toDiff [])
 
-    bufferNel :: ConduitM (UTCTime, Text) (NonEmpty (UTCTime, Text)) AWS ()
     bufferNel num currentSize firstT firstM rest = do
       a <- await
       case a of
@@ -172,7 +174,7 @@ logSink batchSize groupName streamName initialSequenceNumber = buffer =$ logSink
           let size     = getSize message
           let newSize  = size + currentSize
           let newNum   = num + 1
-          let timeDiff = toRational $ diffUTCTime ts firstT
+          let timeDiff = floor . toRational $ diffUTCTime ts firstT -- eww
           if shouldSend num newSize timeDiff
             then do
               yield (firstM :| fromDiff rest)
@@ -187,7 +189,7 @@ logSink batchSize groupName streamName initialSequenceNumber = buffer =$ logSink
 
     -- We send if any of our invariants are passed.
     shouldSend num size time = case batchSize of
-      (BatchSize n s t) -> num >= n || size >= s || time >= t
+      (BatchSize n s t) -> num >= n || fromIntegral size >= toBytes s || time >= durationToSeconds t
 
       --case a of
       --  Nothing -> return ()

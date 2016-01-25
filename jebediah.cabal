@@ -13,13 +13,17 @@ description:           jebediah
 library
   build-depends:
                        base                            >= 3          && < 5
+                     , ambiata-data-units
+                     , ambiata-delorean
                      , ambiata-p
                      , ambiata-mismi-core
                      , ambiata-mismi-cloudwatch-logs
+                     , ambiata-data-units
                      , ambiata-x-exception
                      , ambiata-x-eithert
                      , bytestring                      == 0.10.*
                      , conduit
+                     , ini                             == 0.3.3
                      , lens                            >= 4.8        && < 4.10
                      , text                            == 1.2.*
                      , time                            == 1.4.*
@@ -48,6 +52,8 @@ executable jebediah
 
   build-depends:
                       base
+                    , ambiata-data-units
+                    , ambiata-delorean
                     , ambiata-jebediah
                     , ambiata-p
                     , ambiata-x-eithert
