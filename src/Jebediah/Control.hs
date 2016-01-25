@@ -139,18 +139,17 @@ retrieveLogStream'' (GroupName groupName) (StreamName streamName) _ _ x@(Just _)
 -- Takes care to ensure sequence tokens are used for separate jobs, but will generally be
 -- called initially with Nothing for the token parameter.
 
---  Invariants:  The maximum batch size is 1,048,576 bytes, and this size is calculated as the sum of all event messages in UTF-8, plus 26 bytes for each log event.
+--  Amazon invariants, apart from dropping bad records, there's nothing much we can do about these. Hence breaking these will break upload:
 --  * None of the log events in the batch can be more than 2 hours in the future.
 --  * None of the log events in the batch can be older than 14 days or the retention period of the log group.
 --  * The log events in the batch must be in chronological ordered by their timestamp.
+--  * A single line can not be greater than 1,048,550 bytes
+
+--  Handled invariants, amazon requirement we enforce here:
+--  * The maximum batch size is 1,048,576 bytes, and this size is calculated as the sum of all event messages in UTF-8, plus 26 bytes for each log event.
+--  * All entries must have text in them (empty is not allowed, we filter them out here).
 --  * The maximum number of log events in a batch is 10,000.
 --  * A batch of log events in a single PutLogEvents request cannot span more than 24 hours. Otherwise, the PutLogEvents operation will fail.
-
---  Other invariants discovered
---  * All entries must have text in them (empty is not allowed, we do however filter them out here)
-
---  Operational limitations
---  * A single line can not be greater than 1MB
 
 logSink :: BatchSize
         -> GroupName
@@ -163,8 +162,9 @@ logSink batchSize groupName streamName initialSequenceNumber = buffer =$ logSink
       a <- await
       case a of
         Nothing -> return ()
-        Just a'@(ts,message) ->
+        Just a'@(ts,message) | not (T.null message) ->
           bufferNel 1 (getSize message) ts a' (toDiff [])
+        Just _ -> buffer
 
     bufferNel num currentSize firstT firstM rest = do
       a <- await
