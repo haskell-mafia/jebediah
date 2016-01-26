@@ -73,10 +73,10 @@ commandP' = subparser $
               (CreateStream <$> groupName' <*> streamName')
   <> command' "upload-file"
               "Upload a file to a new fresh stream"
-              (CreateStreamAndUpload <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH"))
+              (CreateStreamAndUpload <$> groupName' <*> streamName' <*> file')
   <> command' "upload-file-to-exising"
               "Upload a file to an existing stream"
-              (UploadFile <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH") <*> sequenceNumber')
+              (UploadFile <$> groupName' <*> streamName' <*> file'<*> sequenceNumber')
 
 run :: Command -> IO ()
 run c = do
@@ -134,6 +134,9 @@ fromTime' = optional $ option (pOption p) (short 't' <> long "time" <> help "Loc
 
 follow' :: Parser Following
 follow' = Follow <$> option auto (short 'f' <> long "follow" <> help "Follow the stream with checks every 'X' seconds" <> metavar "X") <|> pure NoFollow
+
+file' :: Parser FilePath
+file' = argument str (metavar "FILEPATH" <> action "file")
 
 getFileConduit :: MonadIO m => FilePath -> Source m (DT.UTCTime, T.Text)
 getFileConduit path = do

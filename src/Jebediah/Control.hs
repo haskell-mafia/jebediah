@@ -191,13 +191,6 @@ logSink batchSize groupName streamName initialSequenceNumber = buffer =$ logSink
     shouldSend num size time = case batchSize of
       (BatchSize n s t) -> num >= n || fromIntegral size >= toBytes s || time >= durationToSeconds t
 
-      --case a of
-      --  Nothing -> return ()
-      --  Just a' -> do
-      --    as <- replicateM (n - 1) await
-      --    yield (a' :| catMaybes as)
-      --    buffer
-
 -- Conduit sink which takes in a single NEL and pushes it up.
 -- This function takes care to use the next sequence token each
 -- time it is run.
