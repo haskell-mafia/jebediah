@@ -174,7 +174,7 @@ logSink batchSize groupName streamName initialSequenceNumber = buffer =$ logSink
           let size     = getSize message
           let newSize  = size + currentSize
           let newNum   = num + 1
-          let timeDiff = floor . toRational $ diffUTCTime ts firstT -- eww
+          let timeDiff = ceiling . toRational $ diffUTCTime ts firstT -- eww
           if shouldSend num newSize timeDiff
             then do
               yield (firstM :| fromDiff rest)
