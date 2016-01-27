@@ -18,7 +18,6 @@ library
                      , ambiata-p
                      , ambiata-mismi-core
                      , ambiata-mismi-cloudwatch-logs
-                     , ambiata-data-units
                      , ambiata-x-exception
                      , ambiata-x-eithert
                      , bytestring                      == 0.10.*
