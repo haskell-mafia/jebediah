@@ -30,9 +30,12 @@ import qualified Data.Time as DT
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
+import           Delorean.Duration
+
 import           Mismi
 import           Mismi.CloudwatchLogs.Amazonka hiding (createLogGroup, createLogStream)
 
+import           Units
 
 main :: IO ()
 main = do
@@ -70,10 +73,10 @@ commandP' = subparser $
               (CreateStream <$> groupName' <*> streamName')
   <> command' "upload-file"
               "Upload a file to a new fresh stream"
-              (CreateStreamAndUpload <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH"))
+              (CreateStreamAndUpload <$> groupName' <*> streamName' <*> file')
   <> command' "upload-file-to-exising"
               "Upload a file to an existing stream"
-              (UploadFile <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH") <*> sequenceNumber')
+              (UploadFile <$> groupName' <*> streamName' <*> file'<*> sequenceNumber')
 
 run :: Command -> IO ()
 run c = do
@@ -95,12 +98,12 @@ run c = do
       liftIO (doesFileExist fp) >>= \case
         True -> do
           createLogStream g s
-          getFileConduit fp $$ logSink 100 g s Nothing
+          getFileConduit fp $$ logSink (BatchSize 10000 (BytesQuantity 1048576) (Seconds 60)) g s Nothing
         False -> liftIO $ do
           putStrLn "File does not exist"
           exitWith (ExitFailure 1)
     UploadFile g s fp sn ->
-      getFileConduit fp $$ logSink 100 g s sn
+      getFileConduit fp $$ logSink (BatchSize 10000 (BytesQuantity 1048576) (Seconds 60)) g s sn
 
 data Command =
   ListGroups
@@ -131,6 +134,9 @@ fromTime' = optional $ option (pOption p) (short 't' <> long "time" <> help "Loc
 
 follow' :: Parser Following
 follow' = Follow <$> option auto (short 'f' <> long "follow" <> help "Follow the stream with checks every 'X' seconds" <> metavar "X") <|> pure NoFollow
+
+file' :: Parser FilePath
+file' = argument str (metavar "FILEPATH" <> action "file")
 
 getFileConduit :: MonadIO m => FilePath -> Source m (DT.UTCTime, T.Text)
 getFileConduit path = do

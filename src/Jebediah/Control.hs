@@ -22,11 +22,19 @@ import           Mismi.Amazonka hiding (await)
 import           Mismi.CloudwatchLogs.Amazonka hiding (createLogGroup, createLogStream)
 import qualified Mismi.CloudwatchLogs.Amazonka as MA
 
+import qualified Data.ByteString as B
 import           Data.Conduit
 import qualified Data.Conduit.List as DC
+import           Data.Time.Clock
 import           Data.Time.Clock.POSIX
+import qualified Data.Text as T
+import           Data.Text.Encoding (encodeUtf8)
+
+import           Delorean.Duration
 
 import           Jebediah.Data
+
+import           Units
 
 listLogGroups :: MonadAWS m
               => Maybe GroupName
@@ -127,24 +135,61 @@ retrieveLogStream'' (GroupName groupName) (StreamName streamName) _ _ x@(Just _)
  $ getLogEvents groupName streamName
  & gleNextToken .~ x
 
--- Conduit sink which takes lines pairs, batches them into sizes of n, and sends them up.
+-- Conduit sink which takes lines pairs, batches them, and sends them up.
 -- Takes care to ensure sequence tokens are used for separate jobs, but will generally be
 -- called initially with Nothing for the token parameter.
-logSink :: Int
+
+--  Amazon invariants, apart from dropping bad records, there's nothing much we can do about these. Hence breaking these will break upload:
+--  * None of the log events in the batch can be more than 2 hours in the future.
+--  * None of the log events in the batch can be older than 14 days or the retention period of the log group.
+--  * The log events in the batch must be in chronological ordered by their timestamp.
+--  * A single line can not be greater than 1,048,550 bytes
+
+--  Handled invariants, amazon requirement we enforce here:
+--  * The maximum batch size is 1,048,576 bytes, and this size is calculated as the sum of all event messages in UTF-8, plus 26 bytes for each log event.
+--  * All entries must have text in them (empty is not allowed, we filter them out here).
+--  * The maximum number of log events in a batch is 10,000.
+--  * A batch of log events in a single PutLogEvents request cannot span more than 24 hours. Otherwise, the PutLogEvents operation will fail.
+
+logSink :: BatchSize
         -> GroupName
         -> StreamName
         -> Maybe Text
         -> Sink (UTCTime, Text) AWS ()
-logSink n groupName streamName initialSequenceNumber = buffer =$ logSinkNel groupName streamName initialSequenceNumber
+logSink batchSize groupName streamName initialSequenceNumber = buffer =$ logSinkNel groupName streamName initialSequenceNumber
   where
     buffer = do
       a <- await
       case a of
         Nothing -> return ()
-        Just a' -> do
-          as <- replicateM (n - 1) await
-          yield (a' :| catMaybes as)
-          buffer
+        Just a'@(ts,message) | not (T.null message) ->
+          bufferNel 1 (getSize message) ts a' (toDiff [])
+        Just _ -> buffer
+
+    bufferNel num currentSize firstT firstM rest = do
+      a <- await
+      case a of
+        Nothing -> yield (firstM :| fromDiff rest)
+        Just a'@(ts,message) | not (T.null message) -> do
+          let size     = getSize message
+          let newSize  = size + currentSize
+          let newNum   = num + 1
+          let timeDiff = ceiling . toRational $ diffUTCTime ts firstT -- eww
+          if shouldSend num newSize timeDiff
+            then do
+              yield (firstM :| fromDiff rest)
+              bufferNel 1 size ts a' (toDiff [])
+            else
+              bufferNel newNum newSize firstT firstM (rest . (toDiff [a']))
+        -- The text line is empty, we have to ignore it.
+        Just _ -> bufferNel num currentSize firstT firstM rest
+
+    -- As mentioned above, size in bytes in UTF8 + 26.
+    getSize message = B.length (encodeUtf8 message) + 26
+
+    -- We send if any of our invariants are passed.
+    shouldSend num size time = case batchSize of
+      (BatchSize n s t) -> num >= n || fromIntegral size >= toBytes s || time >= durationToSeconds t
 
 -- Conduit sink which takes in a single NEL and pushes it up.
 -- This function takes care to use the next sequence token each
