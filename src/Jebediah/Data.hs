@@ -8,8 +8,6 @@ module Jebediah.Data (
 
 import           P
 
-import           Data.Text
-
 data Following =
   Follow Int
   | NoFollow
