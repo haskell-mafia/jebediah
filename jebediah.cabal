@@ -18,10 +18,13 @@ library
                      , ambiata-mismi-cloudwatch-logs
                      , ambiata-x-exception
                      , ambiata-x-eithert
-                     , conduit
+                     , async                           == 2.0.*
+                     , conduit                         == 1.2.*
+                     , conduit-combinators             == 1.0.*
+                     , conduit-extra                   == 1.1.*
                      , lens                            >= 4.8        && < 4.10
                      , text                            == 1.2.*
-                     , time                            >=1.2         && < 1.6
+                     , time                            >= 1.2        && < 1.6
                      , old-locale                      == 1.0.*
                      , transformers                    >= 0.3.1      && < 0.5
 
