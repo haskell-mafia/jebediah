@@ -16,13 +16,19 @@ library
                      , ambiata-p
                      , ambiata-mismi-core
                      , ambiata-mismi-cloudwatch-logs
+                     , ambiata-twine
                      , ambiata-x-exception
                      , ambiata-x-eithert
                      , async                           == 2.0.*
+                     , bytestring                      == 0.10.*
                      , conduit                         == 1.2.*
                      , conduit-combinators             == 1.0.*
                      , conduit-extra                   == 1.1.*
                      , lens                            >= 4.8        && < 4.10
+                     , resourcet                       == 1.1.*
+                     , semigroups                      == 0.16.*
+                     , stm                             == 2.4.*
+                     , stm-chans                       == 3.0.*
                      , text                            == 1.2.*
                      , time                            >= 1.2        && < 1.6
                      , old-locale                      == 1.0.*
@@ -35,9 +41,11 @@ library
                     src
 
   exposed-modules:
-                    Jebediah
-                    Jebediah.Control
+                    Jebediah.Conduit
                     Jebediah.Data
+                    Jebediah.Single
+                    Jebediah.Structure
+
 
 executable jebediah
   ghc-options:
@@ -52,16 +60,19 @@ executable jebediah
   build-depends:
                       base
                     , ambiata-jebediah
-                    , ambiata-p
-                    , ambiata-x-eithert
-                    , ambiata-x-optparse
+
                     , ambiata-mismi-core
                     , ambiata-mismi-cloudwatch-logs
+                    , ambiata-p
+                    , ambiata-twine
+                    , ambiata-x-eithert
+                    , ambiata-x-optparse
                     , attoparsec
                     , conduit
                     , directory                       == 1.2.*
                     , optparse-applicative
                     , lens
+                    , resourcet
                     , text
                     , time
                     , transformers
@@ -111,21 +122,3 @@ test-suite test-io
                     , text
                     , QuickCheck                      == 2.7.*
                     , quickcheck-instances            == 0.3.*
-
-test-suite test-cli
-  type:
-                    exitcode-stdio-1.0
-
-  main-is:
-                    test-cli.hs
-
-  ghc-options:
-                    -Wall -threaded -O2
-
-  hs-source-dirs:
-                    test
-
-  build-depends:
-                      base                            >= 3          && < 5
-                    , ambiata-jebediah
-                    , ambiata-disorder-core

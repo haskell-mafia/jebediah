@@ -1,5 +1,9 @@
 import           Disorder.Core.Main
 
+import qualified Test.Jebediah.Data
+
 main :: IO ()
 main =
-  disorderMain []
+  disorderMain [
+      Test.Jebediah.Data.tests
+    ]
