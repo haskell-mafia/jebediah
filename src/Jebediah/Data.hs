@@ -9,9 +9,16 @@ module Jebediah.Data (
 import           P
 
 data Following =
-  Follow Int
+    Follow Int
   | NoFollow
-  deriving (Eq, Show)
+    deriving (Eq, Show)
 
-newtype GroupName = GroupName { unGroupName :: Text } deriving (Eq, Show)
-newtype StreamName = StreamName { unStreamName :: Text } deriving (Eq, Show)
+newtype GroupName =
+  GroupName {
+      unGroupName :: Text
+    } deriving (Eq, Show)
+
+newtype StreamName =
+  StreamName {
+      unStreamName :: Text
+    } deriving (Eq, Show)
