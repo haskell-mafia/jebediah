@@ -98,7 +98,17 @@ test-suite test
                     , ambiata-jebediah
                     , ambiata-disorder-core
                     , ambiata-disorder-corpus
+                    , ambiata-mismi-core
+                    , ambiata-mismi-cloudwatch-logs
                     , ambiata-p
+                    , ambiata-twine
+                    , ambiata-x-eithert
+                    , conduit
+                    , exceptions
+                    , nats
+                    , resourcet
+                    , text
+                    , time
                     , QuickCheck                      == 2.7.*
                     , quickcheck-instances            == 0.3.*
 
@@ -120,7 +130,16 @@ test-suite test-io
                     , ambiata-jebediah
                     , ambiata-disorder-core
                     , ambiata-disorder-corpus
+                    , ambiata-mismi-core
+                    , ambiata-mismi-cloudwatch-logs
                     , ambiata-p
+                    , ambiata-twine
+                    , ambiata-x-eithert
+                    , conduit
+                    , exceptions
+                    , nats
+                    , resourcet
                     , text
+                    , time
                     , QuickCheck                      == 2.7.*
                     , quickcheck-instances            == 0.3.*
