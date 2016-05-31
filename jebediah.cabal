@@ -19,7 +19,7 @@ library
                      , ambiata-twine
                      , ambiata-x-exception
                      , ambiata-x-eithert
-                     , async                           == 2.0.*
+                     , async                           >= 2.0        && < 2.2
                      , bytestring                      == 0.10.*
                      , conduit                         == 1.2.*
                      , conduit-combinators             == 1.0.*
