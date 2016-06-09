@@ -43,3 +43,9 @@ instance Arbitrary Line where
 instance Arbitrary Natural where
   arbitrary =
     fromInteger <$> choose (0, 1000000000)
+
+instance Arbitrary Log where
+  arbitrary = do
+    l <- arbitrary
+    t <- arbitrary
+    pure $ Log (getContent l) t
