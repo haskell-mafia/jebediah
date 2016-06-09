@@ -219,7 +219,7 @@ drain env group stream next logs = do
         Just event ->
           acknowledge >> handle size acc event
 
-  batch <- L.reverse <$> collect 0 []
+  batch <- (L.reverse . fudge) <$> collect 0 []
   modifyMVar_ (exclusiveSequence next) $ \token -> do
     next' <- rawRunAWS env $ write group stream token batch
     pure $ maybe token Just next'
