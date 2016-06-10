@@ -24,7 +24,8 @@ prop_fudge l =
   let
     fudged = fudge l
   in
-    fudged === (reverse $ sortOn logTime fudged)
+   counterexample (mconcat ["Not in reverse-chronological order: ", show fudged]) $
+     snd $ foldr (\el (last, acc) -> (Just el, acc && maybe True (\last' -> logTime el >= logTime last') last)) (Nothing, True) fudged
 
 return []
 tests :: IO Bool
