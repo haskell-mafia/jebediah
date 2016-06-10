@@ -13,6 +13,7 @@ module Jebediah.Data (
   , unixToUtc
   , newExclusiveSequence
   , safety
+  , fudge
   ) where
 
 import           Control.Lens (over, set)
@@ -20,7 +21,7 @@ import           Control.Concurrent.MVar (MVar, newMVar)
 
 import qualified Data.ByteString as B
 import qualified Data.Text.Encoding as T
-import           Data.Time (UTCTime)
+import           Data.Time (UTCTime, diffUTCTime)
 import           Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds, posixSecondsToUTCTime)
 
 import           Mismi.Amazonka (Env, serviceRetry, retryAttempts, exponentBase, configure)
@@ -102,3 +103,23 @@ newExclusiveSequence s =
 safety :: Env -> Env
 safety =
  configure (over serviceRetry (set retryAttempts 10 . set exponentBase 0.6) cloudWatchLogs)
+
+
+-- |
+-- Ensure logs stay in their current order but all the times are
+-- in _reverse_ chronological order. This is useful / required to
+-- handle clock jitter where ordered log events get associated with
+-- out-of-order timestamps, you want the logs to stay in order but
+-- the timestamp fudged to maintain the chronology.
+--
+fudge :: [Log] -> [Log]
+fudge =
+  snd . foldr (\el (last, acc) ->
+    case last of
+      Just x ->
+        if diffUTCTime (logTime x) (logTime el) < 0
+           then (Just el, el:acc)
+           else let el' = Log (logChunk el) (logTime x) in (Just el', el':acc)
+      Nothing ->
+        (Just el, el:acc)
+    ) (Nothing, [])
