@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import           BuildInfo_ambiata_jebediah
+import           DependencyInfo_ambiata_jebediah
 
 import           Options.Applicative
 
@@ -47,6 +48,8 @@ main = do
     case sc of
       VersionCommand ->
         putStrLn buildInfoVersion >> exitSuccess
+      DependencyCommand ->
+        for dependencyInfo putStrLn >> exitSuccess
       RunCommand DryRun c ->
         print c >> exitSuccess
       RunCommand RealRun c ->
