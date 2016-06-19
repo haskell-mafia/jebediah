@@ -22,6 +22,7 @@ import           Data.Conduit (Conduit, Source, Sink)
 import qualified Data.Conduit as C
 import qualified Data.List as L
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import           Data.Time (getCurrentTime, diffUTCTime)
 
 import           Jebediah.Data
@@ -106,8 +107,11 @@ aquireSinkState env group stream next = do
 
 releaseSinkState :: Env -> LogGroup -> LogStream -> ExclusiveSequence -> SinkState -> IO ()
 releaseSinkState env group stream next (SinkState chan consumer p) = do
+  T.putStrLn "pulling pin"
   pullPin p
+  T.putStrLn "waiting for completion"
   A.wait consumer
+  T.putStrLn "done waiting for completion"
   complete env group stream next chan
 
 -- |
@@ -137,16 +141,21 @@ sink env group stream next =
 
 sink' :: MonadIO m => Env -> LogGroup -> LogStream -> ExclusiveSequence -> SinkState -> Sink Log m (Maybe Sequence)
 sink' env group stream next s@(SinkState chan _ _) = do
+  liftIO $ T.putStrLn "await"
   line <- C.await
+  liftIO $ T.putStrLn "await:done"
   case line of
-    Nothing ->
+    Nothing -> do
+      liftIO $ T.putStrLn "final"
       liftIO . readMVar . exclusiveSequence $ next
     Just a -> do
+      liftIO $ T.putStrLn "putting on channel"
       liftIO . S.atomically . S.writeTBChan chan $ a
       sink' env group stream next s
 
 consume :: Env -> LogGroup -> LogStream -> ExclusiveSequence -> S.TBChan Log -> Pin -> IO ()
 consume env group stream next logs p = do
+  T.putStrLn "consume"
   n <- drain env group stream next logs
   when (n < 10) $
     (snooze . seconds $ 1)
@@ -183,15 +192,18 @@ drain env group stream next logs = do
   start <- getCurrentTime
   let
     peek :: IO (Maybe Log)
-    peek =
+    peek = do
+      T.putStrLn "peek"
       S.atomically $ S.tryPeekTBChan logs
 
     acknowledge :: IO ()
-    acknowledge =
+    acknowledge = do
+      T.putStrLn "acknowledge"
       void . S.atomically . S.readTBChan $ logs
 
     overdue :: [Log] -> IO Bool
-    overdue acc =
+    overdue acc = do
+      T.putStrLn "overdue"
       case length acc `mod` 100 == 0 of
         False ->
           pure False
@@ -205,12 +217,14 @@ drain env group stream next logs = do
 
     handle :: Int -> [Log] -> Log -> IO [Log]
     handle size acc x = do
+      T.putStrLn "handle"
       ifM (overdue acc)
         (pure $ x : acc)
         (collect (size + sizeOf x) (x : acc))
 
     collect :: Int -> [Log] -> IO [Log]
-    collect size acc =
+    collect size acc = do
+      T.putStrLn "collect"
       peek >>= \x -> case x of
         Nothing ->
           pure acc
@@ -219,8 +233,12 @@ drain env group stream next logs = do
         Just event ->
           acknowledge >> handle size acc event
 
+  T.putStrLn "pre-batch"
   batch <- (L.reverse . fudge) <$> collect 0 []
+  T.putStrLn $ "post-batch: " <> (T.pack . show . length) batch
   modifyMVar_ (exclusiveSequence next) $ \token -> do
+    T.putStrLn "write"
     next' <- rawRunAWS env $ write group stream token batch
     pure $ maybe token Just next'
+  T.putStrLn "done"
   pure $ length batch
