@@ -141,15 +141,11 @@ sink env group stream next =
 
 sink' :: MonadIO m => Env -> LogGroup -> LogStream -> ExclusiveSequence -> SinkState -> Sink Log m (Maybe Sequence)
 sink' env group stream next s@(SinkState chan _ _) = do
-  liftIO $ T.putStrLn "await"
   line <- C.await
-  liftIO $ T.putStrLn "await:done"
   case line of
     Nothing -> do
-      liftIO $ T.putStrLn "final"
       liftIO . readMVar . exclusiveSequence $ next
     Just a -> do
-      liftIO $ T.putStrLn "putting on channel"
       liftIO . S.atomically . S.writeTBChan chan $ a
       sink' env group stream next s
 
@@ -193,17 +189,14 @@ drain env group stream next logs = do
   let
     peek :: IO (Maybe Log)
     peek = do
-      T.putStrLn "peek"
       S.atomically $ S.tryPeekTBChan logs
 
     acknowledge :: IO ()
     acknowledge = do
-      T.putStrLn "acknowledge"
       void . S.atomically . S.readTBChan $ logs
 
     overdue :: [Log] -> IO Bool
     overdue acc = do
-      T.putStrLn "overdue"
       case length acc `mod` 100 == 0 of
         False ->
           pure False
@@ -217,14 +210,12 @@ drain env group stream next logs = do
 
     handle :: Int -> [Log] -> Log -> IO [Log]
     handle size acc x = do
-      T.putStrLn "handle"
       ifM (overdue acc)
         (pure $ x : acc)
         (collect (size + sizeOf x) (x : acc))
 
     collect :: Int -> [Log] -> IO [Log]
     collect size acc = do
-      T.putStrLn "collect"
       peek >>= \x -> case x of
         Nothing ->
           pure acc
@@ -237,8 +228,9 @@ drain env group stream next logs = do
   batch <- (L.reverse . fudge) <$> collect 0 []
   T.putStrLn $ "post-batch: " <> (T.pack . show . length) batch
   modifyMVar_ (exclusiveSequence next) $ \token -> do
-    T.putStrLn "write"
+    T.putStrLn "pre-write"
     next' <- rawRunAWS env $ write group stream token batch
+    T.putStrLn "post-write"
     pure $ maybe token Just next'
   T.putStrLn "done"
   pure $ length batch
