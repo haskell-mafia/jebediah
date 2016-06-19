@@ -14,7 +14,7 @@ import           Control.Concurrent.MVar (modifyMVar_, readMVar)
 import qualified Control.Concurrent.STM as S
 import qualified Control.Concurrent.STM.TBChan as S
 import           Control.Lens ((^.))
-import           Control.Monad.Catch (bracket)
+import           Control.Monad.Catch (bracket, catchAll, throwM)
 import           Control.Monad.IO.Class (MonadIO (..))
 import           Control.Monad.Trans.Resource (ResourceT)
 
@@ -229,7 +229,7 @@ drain env group stream next logs = do
   T.putStrLn $ "post-batch: " <> (T.pack . show . length) batch
   modifyMVar_ (exclusiveSequence next) $ \token -> do
     T.putStrLn "pre-write"
-    next' <- rawRunAWS env $ write group stream token batch
+    next' <- (rawRunAWS env $ write group stream token batch) `catchAll` \e -> (T.putStrLn $ "exception: " <> (T.pack . show) e) >> throwM e
     T.putStrLn "post-write"
     pure $ maybe token Just next'
   T.putStrLn "done"
