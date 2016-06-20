@@ -36,7 +36,7 @@ import           P
 import           System.IO (IO)
 
 import           Twine.Data.Pin (Pin, newPin, checkPin, pullPin)
-import           Twine.Snooze (snooze, seconds)
+import           Twine.Snooze (snooze, milliseconds, seconds)
 
 -- |
 -- Cloudwatch Logs doesn't accept empty messages so it is painful to represent
@@ -204,7 +204,7 @@ drain env group stream next logs = do
       (size + sizeOf x) >= 1048576 || (length acc) >= 10000
 
     handle :: Int -> [Log] -> Log -> IO [Log]
-    handle size acc x = do
+    handle size acc x =
       ifM (overdue acc)
         (pure $ x : acc)
         (collect (size + sizeOf x) (x : acc))
@@ -212,8 +212,11 @@ drain env group stream next logs = do
     collect :: Int -> [Log] -> IO [Log]
     collect size acc =
       peek >>= \x -> case x of
-        Nothing ->
-          pure acc
+        Nothing -> do
+          check <- getCurrentTime
+          if diffUTCTime check start > 1
+            then pure acc
+            else (snooze . milliseconds) 100 >> collect size acc
         Just event | overflow size acc event ->
           pure acc
         Just event ->
