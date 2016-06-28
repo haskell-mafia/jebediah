@@ -182,6 +182,19 @@ drain :: Env -> LogGroup -> LogStream -> ExclusiveSequence -> S.TBChan Log -> IO
 drain env group stream next logs = do
   start <- getCurrentTime
   let
+    -- handle undocumented limit: Log event too large: 404439 bytes exceeds limit of 262144
+    disect :: Log -> [Log]
+    disect l@(Log c t) =
+      if sizeOf l < 262000
+        then [l]
+        else let (a, b) = T.splitAt (T.length c `div` 2) c in join $ disect <$> [Log a t, Log b t]
+
+    rechunk :: [a] -> [[a]]
+    rechunk [] =
+      []
+    rechunk xs =
+      let (a, b) = splitAt 10000 xs in a : rechunk b
+
     peek :: IO (Maybe Log)
     peek =
       S.atomically $ S.tryPeekTBChan logs
@@ -223,7 +236,10 @@ drain env group stream next logs = do
           acknowledge >> handle size acc event
 
   batch <- (L.reverse . fudge) <$> collect 0 []
-  modifyMVar_ (exclusiveSequence next) $ \token -> do
-    next' <- rawRunAWS env $ write group stream token batch
-    pure $ maybe token Just next'
+
+  for_ (rechunk $ batch >>= disect) $ \b ->
+    modifyMVar_ (exclusiveSequence next) $ \token -> do
+      next' <- rawRunAWS env $ write group stream token b
+      pure $ maybe token Just next'
+
   pure $ length batch
