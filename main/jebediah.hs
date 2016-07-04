@@ -9,8 +9,6 @@ import           Options.Applicative
 
 import           P
 
-import           Control.Lens (over, set)
-
 import           Control.Lens hiding (argument)
 import           Control.Concurrent.MVar (newMVar)
 import           Control.Monad.IO.Class
