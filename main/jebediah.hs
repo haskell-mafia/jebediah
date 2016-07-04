@@ -9,6 +9,8 @@ import           Options.Applicative
 
 import           P
 
+import           Control.Lens (over, set)
+
 import           Control.Lens hiding (argument)
 import           Control.Concurrent.MVar (newMVar)
 import           Control.Monad.IO.Class
@@ -35,6 +37,8 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 import           Mismi (discoverAWSEnv, renderRegionError, runAWS, renderError)
+import           Mismi.Amazonka (serviceRetry, retryAttempts, exponentBase, configure)
+import           Mismi.CloudwatchLogs.Amazonka (cloudWatchLogs)
 import qualified Mismi.CloudwatchLogs.Amazonka as M
 
 import           Twine.Data (seconds)
@@ -85,7 +89,8 @@ commandP' = subparser $
 
 run :: Command -> IO ()
 run c = do
-  e <- orDie renderRegionError discoverAWSEnv
+  ee <- orDie renderRegionError discoverAWSEnv
+  let e = configure (over serviceRetry (set retryAttempts 10 . set exponentBase 1) cloudWatchLogs) ee
   orDie renderError . runAWS e $ case c of
     ListGroups ->
        sourceLogGroups Nothing $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. M.lgLogGroupName))
