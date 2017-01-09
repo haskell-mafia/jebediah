@@ -6,6 +6,8 @@ module Jebediah.Conduit (
   , unclean
   , sink
   , sinkBracket
+  , sourceFileLines
+  , sourceHandleLines
   ) where
 
 
@@ -16,12 +18,14 @@ import qualified Control.Concurrent.STM.TBChan as S
 import           Control.Lens ((^.))
 import           Control.Monad.Catch (bracket)
 import           Control.Monad.IO.Class (MonadIO (..))
-import           Control.Monad.Trans.Resource (ResourceT)
+import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.Trans.Resource (MonadResource)
 
 import           Data.Conduit (Conduit, Source, Sink)
 import qualified Data.Conduit as C
 import qualified Data.List as L
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import           Data.Time (getCurrentTime, diffUTCTime)
 
 import           Jebediah.Data
@@ -33,10 +37,14 @@ import qualified Mismi.CloudwatchLogs.Amazonka as M
 
 import           P
 
-import           System.IO (IO)
+import           System.FilePath (FilePath)
+import           System.IO (IO, IOMode (..), Handle, openFile, hClose)
+import           System.IO.Error (IOError, tryIOError)
 
 import           Twine.Data.Pin (Pin, newPin, checkPin, pullPin)
 import           Twine.Snooze (snooze, milliseconds, seconds)
+
+import           X.Control.Monad.Trans.Either (EitherT, left)
 
 -- |
 -- Cloudwatch Logs doesn't accept empty messages so it is painful to represent
@@ -128,7 +136,7 @@ sinkBracket env group stream next f = do
 -- |
 -- Resource safe sink using ResourceT to ensure everything is flushed upon completion.
 --
-sink :: Env -> LogGroup -> LogStream -> ExclusiveSequence -> Sink Log (ResourceT IO) (Maybe Sequence)
+sink :: MonadResource m => Env -> LogGroup -> LogStream -> ExclusiveSequence -> Sink Log m (Maybe Sequence)
 sink env group stream next =
   C.bracketP
     (aquireSinkState env group stream next)
@@ -243,3 +251,20 @@ drain env group stream next logs = do
       pure $ maybe token Just next'
 
   pure $ length batch
+
+sourceFileLines :: MonadResource m => FilePath -> Source (EitherT IOError m) Log
+sourceFileLines path = do
+  C.bracketP
+    (openFile path ReadMode)
+    (hClose)
+    sourceHandleLines
+
+sourceHandleLines :: MonadIO m => Handle -> Source (EitherT IOError m) Log
+sourceHandleLines h = do
+  a <- liftIO $ tryIOError (T.hGetLine h)
+  t <- liftIO getCurrentTime
+  case a of
+    Right x ->
+      C.yield (Log x t) >> sourceHandleLines h
+    Left e ->
+      lift $ left e
