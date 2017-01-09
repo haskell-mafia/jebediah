@@ -15,7 +15,6 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Resource (runResourceT)
 
 import           System.IO
-import           System.IO.Error
 import           System.Directory
 import           System.Exit
 import           X.Options.Applicative
@@ -41,6 +40,7 @@ import qualified Mismi.CloudwatchLogs.Amazonka as M
 
 import           Twine.Data (seconds)
 
+import           X.Control.Monad.Trans.Either
 
 main :: IO ()
 main = do
@@ -107,13 +107,25 @@ run c = do
         True -> do
           createLogStream g s
           lock <- liftIO . fmap ExclusiveSequence . newMVar $ Nothing
-          void . liftIO . runResourceT $ getFileConduit fp $$ sink e g s lock
+          r <- runResourceT . runEitherT $ sourceFileLines fp $$ sink e g s lock
+          case r of
+            Right _ ->
+              pure ()
+            Left er -> liftIO $ do
+              T.hPutStr stderr $ T.pack (show er)
+              exitFailure
         False -> liftIO $ do
           putStrLn "File does not exist"
           exitWith (ExitFailure 1)
     UploadFile g s fp sn -> do
       lock <- liftIO $ ExclusiveSequence <$> newMVar (Sequence <$> sn)
-      void . liftIO . runResourceT $ getFileConduit fp $$ sink e g s lock
+      r <- runResourceT . runEitherT $ sourceFileLines fp $$ sink e g s lock
+      case r of
+        Right _ ->
+          pure ()
+        Left er -> liftIO $ do
+          T.hPutStr stderr $ T.pack (show er)
+          exitFailure
 
 data Command =
   ListGroups
@@ -144,15 +156,3 @@ fromTime' = optional $ option (pOption p) (short 't' <> long "time" <> help "Loc
 
 follow' :: Parser Following
 follow' = (Follow . seconds) <$> option auto (short 'f' <> long "follow" <> help "Follow the stream with checks every 'X' seconds" <> metavar "X") <|> pure NoFollow
-
-getFileConduit :: MonadIO m => FilePath -> Source m Log
-getFileConduit path = do
-  h <- liftIO (openFile path ReadMode)
-  getFileLines' h
-    where
-      getFileLines' h = do
-        a <- liftIO $ tryIOError (T.hGetLine h)
-        t <- liftIO DT.getCurrentTime
-        case a of
-          Right x -> yield (Log x t) >> getFileLines' h
-          Left _  -> return ()
