@@ -3,9 +3,11 @@
 module Jebediah.Conduit (
     source
   , clean
+  , cleanLog
   , unclean
   , sink
   , sinkBracket
+  , sinkBracketOut
   ) where
 
 
@@ -47,8 +49,19 @@ import           Twine.Snooze (snooze, milliseconds, seconds)
 --
 clean :: Monad m => Conduit Log m Log
 clean =
-  C.awaitForever $ \(Log text time) ->
-    C.yield $ Log (if T.null text then "." else text) time
+  C.awaitForever $
+    C.yield . cleanLog
+
+-- |
+-- Cloudwatch Logs doesn't accept empty messages so it is painful to represent
+-- empty lines.
+--
+-- 'cleanLog' provides a standard transformation to warp empty messages, and can
+-- be undone with 'unclean'.
+--
+cleanLog :: Log -> Log
+cleanLog (Log text time) =
+  Log (if T.null text then "." else text) time
 
 -- |
 -- Cloudwatch Logs doesn't accept empty messages so it is painful to represent
@@ -124,6 +137,13 @@ sinkBracket env group stream next f = do
     (aquireSinkState env group stream next)
     (releaseSinkState env group stream next)
     (f . sink' env group stream next)
+
+sinkBracketOut :: Env -> LogGroup -> LogStream -> ExclusiveSequence -> ((Log -> IO ()) -> IO a) -> IO a
+sinkBracketOut env group stream next f =
+  bracket
+    (aquireSinkState env group stream next)
+    (releaseSinkState env group stream next)
+    (\(SinkState chan _ _ ) -> f $ S.atomically . S.writeTBChan chan)
 
 -- |
 -- Resource safe sink using ResourceT to ensure everything is flushed upon completion.
