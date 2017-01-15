@@ -106,12 +106,12 @@ startFileSync env group stream next bufferSize lineSize fileSyncer =
 
 -- | A safe way to consume "startFileSync" so that it runs in the background
 bracketFileSync :: FileSyncer -> IO b -> IO a -> IO a
-bracketFileSync fs start f = do
-  a <- A.async start
-  x <- f
-  closeFileSyncer fs
-  void $ A.wait a
-  pure x
+bracketFileSync fs start f =
+  A.withAsync start $ \a -> do
+    x <- f
+    closeFileSyncer fs
+    void $ A.wait a
+    pure x
 
 timeFormat :: [Char]
 timeFormat =
