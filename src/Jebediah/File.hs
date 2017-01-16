@@ -210,10 +210,7 @@ readFileLines (FileSyncer h expectedBytes) bufferSize lineSize write =
                 -- NOTE: The lines are too long, we will split the line at this point
                 let
                   np =
-                    if l > 0 then
-                      l + BS.length bs - fromIntegral (lineByteCount lineSize) - 1
-                    else
-                      fromIntegral (lineByteCount lineSize)
+                    fromIntegral (lineByteCount lineSize) - l
                 write' $ bd <> BSB.byteString (BU.unsafeTake np bs)
                 go'
                   0

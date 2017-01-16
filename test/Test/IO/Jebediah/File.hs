@@ -63,26 +63,9 @@ prop_sink_file_lines_after =
           lines' === lines
         ]
 
-prop_sink_file_lines_long_line =
-  QC.forAll (QC.choose (1, 10)) $ \i ->
-  QC.forAll (QC.choose (i + 1, 20)) $ \n ->
-  QC.forAll (T.encodeUtf8 . T.pack <$> QC.vectorOf n (QC.choose ('a', 'z'))) $ \line ->
-  testIO $
-    withFileSyncer' $ \fs -> do
-      mLines <- IORef.newIORef []
-      fsPutNoTime fs line
-      closeFileSyncer fs
-      r <- readFileLines fs 1024 (fromIntegral i) (\b -> () <$ IORef.modifyIORef mLines ((:) b))
-      lines' <- reverse <$> IORef.readIORef mLines
-      let
-        lines = splitInterval i line
-      pure . conjoin $ [
-          lines' === lines
-        , r === (LineCount . fromIntegral . length) lines
-        ]
-
 prop_sink_file_lines_small_buffer =
-  QC.forAll (QC.choose (1, 10)) $ \i ->
+  QC.forAll (QC.choose (1, 1024)) $ \j ->
+  QC.forAll (QC.choose (1, 1024)) $ \i ->
   QC.forAll (QC.choose (i + 1, 20)) $ \n ->
   QC.forAll (T.encodeUtf8 . T.pack <$> QC.vectorOf n (QC.choose ('a', 'z'))) $ \line ->
   testIO $
@@ -90,7 +73,7 @@ prop_sink_file_lines_small_buffer =
       mLines <- IORef.newIORef []
       fsPutNoTime fs line
       closeFileSyncer fs
-      r <- readFileLines fs 1 (fromIntegral i) (\b -> () <$ IORef.modifyIORef mLines ((:) b))
+      r <- readFileLines fs j (fromIntegral i) (\b -> () <$ IORef.modifyIORef mLines ((:) b))
       lines' <- reverse <$> IORef.readIORef mLines
       let
         lines = splitInterval i line
