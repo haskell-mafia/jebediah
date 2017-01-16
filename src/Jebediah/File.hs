@@ -93,15 +93,16 @@ startFileSync ::
   LogStream ->
   ExclusiveSequence ->
   ByteCount ->
-  LineByteCount ->
   FileSyncer ->
   IO LineCount
-startFileSync env group stream next bufferSize lineSize fileSyncer =
+startFileSync env group stream next bufferSize fileSyncer =
   J.sinkBracketOut env group stream next $ \sink' ->
     readFileLines
       fileSyncer
       bufferSize
-      lineSize
+      -- This is _greater_ than the (undocumented) maximum batch size of Cloudwatch, and it's important we don't split lines unless we _have_ to
+      -- See "Conduit.drain for more details"
+      (1024 * 1024)
       (\bs -> timedLineToLogOrNow bs >>= sink' . J.cleanLog)
 
 -- | A safe way to consume "startFileSync" so that it runs in the background

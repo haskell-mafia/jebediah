@@ -103,7 +103,7 @@ prop_file_sync group stream =
           lock <- newExclusiveSequence Nothing
           for_ lines $ fsPut fs . flip (<>) "\n" . T.encodeUtf8
           closeFileSyncer fs
-          r <- startFileSync env group stream lock 1024 2048 fs
+          r <- startFileSync env group stream lock 1024 fs
           ls <- J.source env group stream Everything NoFollow =$= J.unclean $$ C.consume
           pure . conjoin $ [
               fmap logChunk ls === lines
