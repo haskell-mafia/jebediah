@@ -81,7 +81,7 @@ commandP' = subparser $
   <> command' "upload-file"
               "Upload a file to a new fresh stream"
               (CreateStreamAndUpload <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH"))
-  <> command' "upload-file-to-exising"
+  <> command' "upload-file-to-existing"
               "Upload a file to an existing stream"
               (UploadFile <$> groupName' <*> streamName' <*> argument str (metavar "FILEPATH") <*> sequenceNumber')
 

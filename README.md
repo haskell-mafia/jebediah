@@ -18,13 +18,13 @@ Available options:
   -h,--help                Show this help text
 
 Available commands:
-  list-groups              List all log groups
-  list-streams             List log streams in a log group
-  cat-stream               Cat a stream
-  create-group             Create a log group
-  create-stream            Create a log stream in a group
-  upload-file              Upload a file to a new fresh stream
-  upload-file-to-exising   Upload a file to an existing stream
+  list-groups               List all log groups
+  list-streams              List log streams in a log group
+  cat-stream                Cat a stream
+  create-group              Create a log group
+  create-stream             Create a log stream in a group
+  upload-file               Upload a file to a new fresh stream
+  upload-file-to-existing   Upload a file to an existing stream
 ```
 
 Most commands self explanatory, the two upload commands may require some clarification. One should generally
