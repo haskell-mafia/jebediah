@@ -11,8 +11,6 @@ import           Disorder.Corpus
 
 import           Jebediah.Data
 
-import           Numeric.Natural (Natural)
-
 import           P
 
 import           Test.QuickCheck
@@ -39,10 +37,6 @@ instance Arbitrary Line where
         (99, (Line . T.unwords) <$> listOf1 (elements weather))
       , (1, pure $ Line "")
       ]
-
-instance Arbitrary Natural where
-  arbitrary =
-    fromInteger <$> choose (0, 1000000000)
 
 instance Arbitrary Log where
   arbitrary = do

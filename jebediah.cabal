@@ -35,7 +35,7 @@ library
                      , text                            == 1.2.*
                      , time                            >= 1.2        && < 1.6
                      , old-locale                      == 1.0.*
-                     , transformers                    >= 0.3.1      && < 0.5
+                     , transformers                    >= 0.3.1      && < 0.6
                      , unix                            == 2.7.*
                      , unix-bytestring                 == 0.3.7.*
 
