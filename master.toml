@@ -24,3 +24,11 @@
   PUBLISH = "true"
   PUBLISH_EXECUTABLES = "jebediah"
   PUBLISH_S3 = "$AMBIATA_ARTEFACTS_BRANCHES"
+
+[build.dist-8-0]
+  GHC_VERSION = "8.0.1"
+  CABAL_VERSION = "1.22.4.0"
+
+[build.branches-8-0]
+  GHC_VERSION = "8.0.1"
+  CABAL_VERSION = "1.22.4.0"
