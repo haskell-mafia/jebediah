@@ -8,6 +8,7 @@ module Jebediah.Data (
   , ExclusiveSequence (..)
   , Log (..)
   , Query (..)
+  , StreamOutput (..)
   , sizeOf
   , utcToUnix
   , unixToUtc
@@ -73,6 +74,11 @@ data Query =
   | Between UTCTime UTCTime
   | At Sequence
     deriving (Eq, Show)
+
+data StreamOutput =
+    StreamsLatest
+  | StreamsPrefix (Maybe LogStream)
+  deriving (Eq, Show)
 
 -- |
 -- 26 bytes of overhead per event plus size of data

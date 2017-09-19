@@ -93,7 +93,7 @@ run c = do
     ListGroups ->
        sourceLogGroups Nothing $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. M.lgLogGroupName))
     ListStreams g ->
-       sourceLogStreams g Nothing $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. M.lsLogStreamName))
+       sourceLogStreams g StreamsLatest $$ DC.mapM_ (\x -> liftIO $ T.putStrLn `traverse_` (x ^. M.lsLogStreamName))
     Cat g s tt f tv -> liftIO $ do
        tz <- DT.getCurrentTimeZone
        let tt' = case tt of Nothing -> Everything; Just ttt -> From (DT.localTimeToUTC tz ttt)
