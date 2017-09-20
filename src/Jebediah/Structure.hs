@@ -48,16 +48,24 @@ newLogGroup g = do
   unless exists $
     createLogGroup g
 
-listLogStreams :: LogGroup -> Maybe LogStream -> AWS [M.LogStream]
-listLogStreams group prefix =
-  sourceLogStreams group prefix $$ C.consume
+listLogStreams :: LogGroup -> StreamOutput -> AWS [M.LogStream]
+listLogStreams group output =
+  sourceLogStreams group output $$ C.consume
 
-sourceLogStreams :: LogGroup -> Maybe LogStream -> Source AWS M.LogStream
-sourceLogStreams group prefix =
+sourceLogStreams :: LogGroup -> StreamOutput -> Source AWS M.LogStream
+sourceLogStreams group output =
   let
+    (order, prefix, descending) = case output of
+                        StreamsPrefix p ->
+                          (M.LogStreamName, p, False)
+                        StreamsLatest ->
+                          (M.LastEventTime, Nothing, True)
+
     source =
       M.paginate $
         M.describeLogStreams (logGroup group)
+          & M.dlssOrderBy .~ (Just order)
+          & M.dlssDescending .~ (Just descending)
           & M.dlssLogStreamNamePrefix .~ fmap logStream prefix
   in
     source =$= C.concatMap (^. M.dlsrsLogStreams)
@@ -68,6 +76,6 @@ createLogStream group stream =
 
 newLogStream :: LogGroup -> LogStream -> AWS ()
 newLogStream g s = do
-  exists <- fmap (not . null) $ listLogStreams g (Just s)
+  exists <- fmap (not . null) $ listLogStreams g (StreamsPrefix $ Just s)
   unless exists $
     createLogStream g s
