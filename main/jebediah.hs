@@ -116,16 +116,8 @@ run c = do
       void . liftIO . runResourceT $ getFileConduit fp $$ sink e g s lock
 
 writeLog :: Timestamp -> Log -> IO ()
-writeLog v (Log text time0) =
-  case v of
-    HideTimestamp ->
-      T.putStrLn text
-    ShowTimestamp ->
-      let
-        time =
-          DT.formatTime DT.defaultTimeLocale "%Y-%m-%d %H:%M:%S" time0
-      in
-        T.putStrLn $ T.pack time <> " " <> text
+writeLog =
+  (T.putStrLn .) . renderLog
 
 data Command =
     ListGroups
@@ -135,11 +127,6 @@ data Command =
   | CreateStream LogGroup LogStream
   | CreateStreamAndUpload LogGroup LogStream FilePath
   | UploadFile LogGroup LogStream FilePath (Maybe T.Text)
-    deriving (Eq, Show)
-
-data Timestamp =
-    HideTimestamp
-  | ShowTimestamp
     deriving (Eq, Show)
 
 groupName' :: Parser LogGroup
