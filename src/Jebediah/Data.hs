@@ -9,20 +9,24 @@ module Jebediah.Data (
   , Log (..)
   , Query (..)
   , StreamOutput (..)
+  , Timestamp (..)
   , sizeOf
   , utcToUnix
   , unixToUtc
   , newExclusiveSequence
   , safety
   , fudge
+  , renderLog
   ) where
 
 import           Control.Lens (over, set)
 import           Control.Concurrent.MVar (MVar, newMVar)
 
 import qualified Data.ByteString as B
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import           Data.Time (UTCTime, diffUTCTime)
+import qualified Data.Time as DT
 import           Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds, posixSecondsToUTCTime)
 
 import           Mismi.Amazonka (Env, serviceRetry, retryAttempts, exponentBase, configure)
@@ -66,6 +70,22 @@ data Log =
       logChunk :: !Text
     , logTime :: !UTCTime
     } deriving (Eq, Show)
+
+data Timestamp =
+    HideTimestamp
+  | ShowTimestamp
+    deriving (Eq, Show)
+
+renderLog :: Timestamp -> Log -> Text
+renderLog t (Log txt time) =
+  case t of
+    HideTimestamp ->
+      txt
+    ShowTimestamp ->
+      let
+        time' = T.pack $ DT.formatTime DT.defaultTimeLocale "%Y-%m-%d %H:%M:%S" time
+      in
+      T.intercalate " " [time', txt]
 
 data Query =
     Everything
