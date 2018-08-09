@@ -75,7 +75,7 @@ executable jebediah
                     , ambiata-x-optparse
                     , attoparsec
                     , conduit
-                    , directory                       == 1.2.*
+                    , directory                      
                     , optparse-applicative
                     , lens
                     , resourcet
